@@ -68,8 +68,8 @@ pdf.drop(['Output', 'Output2(Can be Dropped)'], axis=1).hist(bins=20, figsize=(2
 plt.show()
 
 # Here is where I will drop the column(s) which I think do not contribute towards classification, for example
-X_train = np.delete(X_train, [2], axis=1)
-X_test = np.delete(X_test, [2], axis=1)
+X_train = np.delete(X_train, [3], axis=1)
+X_test = np.delete(X_test, [3], axis=1)
 
 # END
 
