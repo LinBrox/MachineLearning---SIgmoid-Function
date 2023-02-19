@@ -1,0 +1,175 @@
+# import pandas as pd
+# import numpy as np
+# import tensorflow as tf
+# from sklearn.model_selection import train_test_split
+# from sklearn.preprocessing import MinMaxScaler
+# import matplotlib.pyplot as plt
+#
+# headerList = ['Quality Assessment', 'Pre-Screening', 'MA Detection 1', 'MA Detection 2', 'MA Detection 3',
+#               'MA Detection 4', 'MA Detection 5', 'MA Detection 6', 'Exudates Detection 1',
+#               'Exudates Detection 2', 'Exudates Detection 3', 'Exudates Detection 4',
+#               'Exudates Detection 5', 'Exudates Detection 6', 'Exudates Detection 7',
+#               'Euclidean Distance', 'OPTIC Disc', 'AM/FM', 'Output', 'Output2(Can be Dropped)']
+#
+# # 1. Convert ARFF to CSV
+# with open('messidor_features.arff') as f:
+#     content = f.readlines()
+# content = [x.strip() for x in content]
+# start_data = content.index('@data') + 1
+# data = [x.split(',') for x in content[start_data:]]
+# df = pd.DataFrame(data, columns=headerList)
+# df.to_csv('messidor_features.csv', index=False)
+#
+# # 2. Load dataset, visualize and drop uninformative columns
+# df = pd.read_csv('messidor_features.csv')
+# X = df.iloc[:,:-1].values.astype(np.float32)
+# y = df.iloc[:,-1].values.astype(np.int32)
+# plt.hist(X)
+# plt.show()
+# df.drop(columns=['Quality Assessment', 'OPTIC Disc', 'Output2(Can be Dropped)'], inplace=True)
+#
+# # 3. Normalize the features
+# scaler = MinMaxScaler()
+# X_norm = scaler.fit_transform(X)
+#
+# # 4. Split dataset into training and testing sets
+# X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.2, random_state=42)
+#
+# # 5. Build the neural network
+# X_shape = X_train.shape[1]
+# Y_shape = len(np.unique(y_train))
+#
+# model = tf.keras.Sequential([
+#   tf.keras.layers.Dense(20, input_shape=(X_shape,), activation='relu'),
+#   tf.keras.layers.Dense(10, activation='relu'),
+#   tf.keras.layers.Dense(Y_shape, activation='softmax')
+# ])
+#
+# model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+#
+# # Train the model
+# history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.1)
+#
+# # Evaluate the model
+# test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
+# print('\nTest accuracy:', test_acc)
+
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
+
+
+# Define activation function and its derivative
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+
+def sigmoid_derivative(x):
+    return sigmoid(x) * (1 - sigmoid(x))
+
+
+headerList = ['Quality Assessment', 'Pre-Screening', 'MA Detection 1', 'MA Detection 2', 'MA Detection 3',
+              'MA Detection 4', 'MA Detection 5', 'MA Detection 6', 'Exudates Detection 1',
+              'Exudates Detection 2', 'Exudates Detection 3', 'Exudates Detection 4',
+              'Exudates Detection 5', 'Exudates Detection 6', 'Exudates Detection 7',
+              'Euclidean Distance', 'OPTIC Disc', 'AM/FM', 'Output', 'Output2(Can be Dropped)']
+
+# 1. Convert ARFF to CSV
+with open('messidor_features.arff') as f:
+    content = f.readlines()
+content = [x.strip() for x in content]
+start_data = content.index('@data') + 1
+data = [x.split(',') for x in content[start_data:]]
+df = pd.DataFrame(data, columns=headerList)
+df.to_csv('messidor_features.csv', index=False)
+
+# 2. Load dataset, visualize and drop uninformative columns
+df = pd.read_csv('messidor_features.csv')
+X = df.iloc[:, :-1].values.astype(np.float32)
+y = df.iloc[:, -1].values.astype(np.int32)
+plt.hist(X)
+plt.show()
+df.drop(columns=['Quality Assessment', 'OPTIC Disc', 'Output2(Can be Dropped)'], inplace=True)
+
+# 3. Normalize the features
+scaler = MinMaxScaler()
+X_norm = scaler.fit_transform(X)
+
+# 4. Split dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.2, random_state=42)
+
+# 5. Build the neural network
+input_shape = X_train.shape[1]
+hidden_shape = 20
+output_shape = len(np.unique(y_train))
+
+# Initialize weights with small random values
+w1 = np.random.randn(input_shape, hidden_shape) * 0.01
+w2 = np.random.randn(hidden_shape, output_shape) * 0.01
+
+# Set learning rate and number of iterations
+learning_rate = 0.01
+num_iterations = 1000
+
+# Set early stopping parameters
+patience = 10
+best_loss = np.inf
+best_w1 = None
+best_w2 = None
+no_improvement_count = 0
+
+# Train the model using backpropagation algorithm
+train_loss = []
+train_acc = []
+for i in range(num_iterations):
+    # Forward propagation
+    z1 = X_train.dot(w1)
+    a1 = sigmoid(z1)
+    z2 = a1.dot(w2)
+    y_pred = sigmoid(z2)
+
+    # Calculate loss and accuracy
+    y_train_reshaped = y_train.reshape(-1, 1)
+    loss = -np.mean(y_train_reshaped * np.log(y_pred) + (1 - y_train_reshaped) * np.log(1 - y_pred))
+    acc = np.mean((y_pred > 0.5) == y_train_reshaped)
+    train_loss.append(loss)
+    train_acc.append(acc)
+
+    # Backward propagation
+    dz2 = y_pred - y_train
+    dw2 = a1.T.dot(dz2)
+    dz1 = dz2.dot(w2.T) * sigmoid_derivative(z1)
+    dw1 = X_train.T.dot(dz1)
+    # Update weights
+    w1 -= learning_rate * dw1
+    w2 -= learning_rate * dw2
+
+    # Check early stopping condition
+    if loss < best_loss:
+        best_loss = loss
+        best_w1 = w1.copy()
+        best_w2 = w2.copy()
+        no_improvement_count = 0
+    else:
+        no_improvement_count += 1
+        if no_improvement_count >= patience:
+            print(f"Early stopping after {i + 1} iterations")
+            w1 = best_w1
+            w2 = best_w2
+            break
+
+    # Print progress
+    if (i + 1) % 100 == 0:
+        print(f"Iteration {i + 1}/{num_iterations}: loss={loss:.4f}, acc={acc:.4f}")
+
+    # Test the model on the testing set
+    z1 = X_test.dot(w1)
+    a1 = sigmoid(z1)
+    z2 = a1.dot(w2)
+    y_pred = sigmoid(z2)
+    test_loss = -np.mean(y_test * np.log(y_pred) + (1 - y_test) * np.log(1 - y_pred))
+    test_acc = np.mean((y_pred > 0.5) == y_test)
+    print(f"Test loss: {test_loss:.4f}, Test accuracy: {test_acc:.4f}")
