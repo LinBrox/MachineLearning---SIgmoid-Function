@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
@@ -10,7 +11,7 @@ headerList = ['Quality Assessment', 'Pre-Screening', 'MA Detection 1', 'MA Detec
               'Exudates Detection 5', 'Exudates Detection 6', 'Exudates Detection 7',
               'Euclidean Distance', 'OPTIC Disc', 'AM/FM', 'Output', 'Output2(Can be Dropped)']
 
-# 1. Convert ARFF to CSV
+# Convert ARFF to CSV
 with open('messidor_features.arff') as f:
     content = f.readlines()
 content = [x.strip() for x in content]
@@ -19,24 +20,25 @@ data = [x.split(',') for x in content[start_data:]]
 df = pd.DataFrame(data, columns=headerList)
 df.to_csv('messidor_features.csv', index=False)
 
-# 2. Load dataset, visualize and drop uninformative columns
+# Read in the data from the csv
 df = pd.read_csv('messidor_features.csv')
+
+# Fill null values with the mean of each column
+# df.fillna(df.mean(), inplace=True)
+
+# Turns then to be a float value then drops the useless columns
 X = df.iloc[:, :-1].values.astype(np.float32)
 y = df.iloc[:, -1].values.astype(np.int32)
-plt.hist(X)
-plt.show()
 df.drop(columns=['Quality Assessment', 'OPTIC Disc', 'Output2(Can be Dropped)'], inplace=True)
 
-# 3. Normalize the features
+# Normalize the features
 scaler = MinMaxScaler()
 X_norm = scaler.fit_transform(X)
 
-# 4. Split dataset into training and testing sets
+# Split dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.2, random_state=42)
 
-# 5. Build the neural network
-import tensorflow as tf
-
+# Build the neural network
 X_shape = X_train.shape[1]
 Y_shape = len(np.unique(y_train))
 
@@ -54,3 +56,22 @@ history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_spli
 # Evaluate the model
 test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
 print('\nTest accuracy:', test_acc)
+
+# Plot the training and validation accuracy
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Val'], loc='upper left')
+plt.show()
+
+# Make predictions on the test set
+y_pred = model.predict(X_test)
+y_pred = np.argmax(y_pred, axis=1)
+
+# Print the classification report and confusion matrix
+from sklearn.metrics import classification_report, confusion_matrix
+
+print('Classification report:\n', classification_report(y_test, y_pred))
+print('Confusion matrix:\n', confusion_matrix(y_test, y_pred))
