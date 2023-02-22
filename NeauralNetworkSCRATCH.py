@@ -20,7 +20,7 @@ headerList = ['Quality Assessment', 'Pre-Screening', 'MA Detection 1', 'MA Detec
               'Exudates Detection 5', 'Exudates Detection 6', 'Exudates Detection 7',
               'Euclidean Distance', 'OPTIC Disc', 'AM/FM', 'Output', 'Output2(Can be Dropped)']
 
-# 1. Convert ARFF to CSV
+# Convert ARFF to CSV
 with open('messidor_features.arff') as f:
     content = f.readlines()
 content = [x.strip() for x in content]
@@ -29,12 +29,10 @@ data = [x.split(',') for x in content[start_data:]]
 df = pd.DataFrame(data, columns=headerList)
 df.to_csv('messidor_features.csv', index=False)
 
-# 2. Load dataset, visualize and drop uninformative columns
+# Load dataset, visualize and drop uninformative columns
 df = pd.read_csv('messidor_features.csv')
 X = df.iloc[:, :-1].values.astype(np.float32)
 y = df.iloc[:, -1].values.astype(np.int32)
-plt.hist(X)
-plt.show()
 df.drop(columns=['Quality Assessment', 'OPTIC Disc', 'Output2(Can be Dropped)'], inplace=True)
 
 # 3. Normalize the features
@@ -75,9 +73,8 @@ for i in range(num_iterations):
     y_pred = sigmoid(z2)
 
     # Calculate loss and accuracy
-    y_train_reshaped = y_train.reshape(-1, 1)
-    loss = -np.mean(y_train_reshaped * np.log(y_pred) + (1 - y_train_reshaped) * np.log(1 - y_pred))
-    acc = np.mean((y_pred > 0.5) == y_train_reshaped)
+    loss = -np.mean(y_train * np.log(y_pred) + (1 - y_train) * np.log(1 - y_pred))
+    acc = np.mean((y_pred > 0.5) == y_train)
     train_loss.append(loss)
     train_acc.append(acc)
 
@@ -113,6 +110,10 @@ for i in range(num_iterations):
     a1 = sigmoid(z1)
     z2 = a1.dot(w2)
     y_pred = sigmoid(z2)
+
+    # Convert y_pred to class labels
+    y_pred = np.argmax(y_pred, axis=1)
+
     test_loss = -np.mean(y_test * np.log(y_pred) + (1 - y_test) * np.log(1 - y_pred))
-    test_acc = np.mean((y_pred > 0.5) == y_test)
+    test_acc = np.mean(y_pred == y_test)
     print(f"Test loss: {test_loss:.4f}, Test accuracy: {test_acc:.4f}")
