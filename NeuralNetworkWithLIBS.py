@@ -32,13 +32,14 @@ for col in df.columns:
 X = df.iloc[:, :-1].values.astype(np.float32)
 y = df.iloc[:, -1].values.astype(np.int32)
 df.drop(columns=['Exudates Detection 7', 'Exudates Detection 8', 'Output'], inplace=True)
+print(df)
 
 # Normalize the features
 scaler = MinMaxScaler()
 X_norm = scaler.fit_transform(X)
 
 # Define the number of times to train and test the model
-n = 5
+n = 10
 
 # Loop through training and testing the model n times
 for i in range(n):
