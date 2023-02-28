@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 headerList = ['Quality Assessment', 'Pre-Screening', 'MA Detection 1', 'MA Detection 2', 'MA Detection 3',
               'MA Detection 4', 'MA Detection 5', 'MA Detection 6', 'Exudates Detection 1',
               'Exudates Detection 2', 'Exudates Detection 3', 'Exudates Detection 4',
-              'Exudates Detection 5', 'Exudates Detection 6', 'Exudates Detection 7',
-              'Euclidean Distance', 'OPTIC Disc', 'AM/FM', 'Output', 'Output2(Can be Dropped)']
+              'Exudates Detection 5', 'Exudates Detection 6', 'Exudates Detection 7', 'Exudates Detection 8',
+              'Euclidean Distance', 'OPTIC Disc', 'AM/FM', 'Output']
 
 # Convert ARFF to CSV
 with open('messidor_features.arff') as f:
@@ -23,55 +23,64 @@ df.to_csv('messidor_features.csv', index=False)
 # Read in the data from the csv
 df = pd.read_csv('messidor_features.csv')
 
-# Fill null values with the mean of each column
+# Shows null values eventually will need to fill the remainder of the columns with Mean value
+for col in df.columns:
+    print("Number of zero values in column", col, ":", (df[col] == 0).sum())
 # df.fillna(df.mean(), inplace=True)
 
 # Turns then to be a float value then drops the useless columns
 X = df.iloc[:, :-1].values.astype(np.float32)
 y = df.iloc[:, -1].values.astype(np.int32)
-df.drop(columns=['Quality Assessment', 'OPTIC Disc', 'Output2(Can be Dropped)'], inplace=True)
+df.drop(columns=['Exudates Detection 7', 'Exudates Detection 8', 'Output'], inplace=True)
 
 # Normalize the features
 scaler = MinMaxScaler()
 X_norm = scaler.fit_transform(X)
 
-# Split dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.2, random_state=42)
+# Define the number of times to train and test the model
+n = 5
 
-# Build the neural network
-X_shape = X_train.shape[1]
-Y_shape = len(np.unique(y_train))
+# Loop through training and testing the model n times
+for i in range(n):
+    print('Iteration', i + 1)
 
-model = tf.keras.Sequential([
-    tf.keras.layers.Dense(20, input_shape=(X_shape,), activation='relu'),
-    tf.keras.layers.Dense(10, activation='relu'),
-    tf.keras.layers.Dense(Y_shape, activation='softmax')
-])
+    # Split dataset into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.2, random_state=42)
 
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    # Build the neural network
+    X_shape = X_train.shape[1]
+    Y_shape = len(np.unique(y_train))
 
-# Train the model
-history = model.fit(X_train, y_train, epochs=1000, batch_size=32, validation_split=0.1)
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(20, input_shape=(X_shape,), activation='relu'),
+        tf.keras.layers.Dense(10, activation='relu'),
+        tf.keras.layers.Dense(Y_shape, activation='softmax')
+    ])
 
-# Evaluate the model
-test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
-print('\nTest accuracy:', test_acc)
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-# Plot the training and validation accuracy
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-plt.title('Model accuracy')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.legend(['Train', 'Val'], loc='upper left')
-plt.show()
+    # Train the model
+    history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.1)
 
-# Make predictions on the test set
-y_pred = model.predict(X_test)
-y_pred = np.argmax(y_pred, axis=1)
+    # Evaluate the model
+    test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
+    print('\nTest accuracy:', test_acc)
 
-# Print the classification report and confusion matrix
-from sklearn.metrics import classification_report, confusion_matrix
+    # Plot the training and validation accuracy
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('Model accuracy')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Val'], loc='upper left')
+    plt.show()
 
-print('Classification report:\n', classification_report(y_test, y_pred))
-print('Confusion matrix:\n', confusion_matrix(y_test, y_pred))
+    # Make predictions on the test set
+    y_pred = model.predict(X_test)
+    y_pred = np.argmax(y_pred, axis=1)
+
+    # Print the classification report and confusion matrix
+    from sklearn.metrics import classification_report, confusion_matrix
+
+    print('Classification report:\n', classification_report(y_test, y_pred))
+    print('Confusion matrix:\n', confusion_matrix(y_test, y_pred))

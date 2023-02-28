@@ -29,11 +29,14 @@ data = [x.split(',') for x in content[start_data:]]
 df = pd.DataFrame(data, columns=headerList)
 df.to_csv('messidor_features.csv', index=False)
 
+# Fill null values with the mean of each column
+df.fillna(df.mean(), inplace=True)
+
 # Load dataset, visualize and drop uninformative columns
 df = pd.read_csv('messidor_features.csv')
 X = df.iloc[:, :-1].values.astype(np.float32)
 y = df.iloc[:, -1].values.astype(np.int32)
-df.drop(columns=['Quality Assessment', 'OPTIC Disc', 'Output2(Can be Dropped)'], inplace=True)
+df.drop(columns=['Output2(Can be Dropped)'], inplace=True)
 
 # 3. Normalize the features
 scaler = MinMaxScaler()
@@ -71,6 +74,7 @@ for i in range(num_iterations):
     a1 = sigmoid(z1)
     z2 = a1.dot(w2)
     y_pred = sigmoid(z2)
+    print(y_pred)
 
     # Calculate loss and accuracy
     loss = -np.mean(y_train * np.log(y_pred) + (1 - y_train) * np.log(1 - y_pred))
