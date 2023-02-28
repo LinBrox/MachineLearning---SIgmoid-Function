@@ -20,7 +20,7 @@ headerList = ['Quality Assessment', 'Pre-Screening', 'MA Detection 1', 'MA Detec
               'Exudates Detection 5', 'Exudates Detection 6', 'Exudates Detection 7',
               'Euclidean Distance', 'OPTIC Disc', 'AM/FM', 'Output', 'Output2(Can be Dropped)']
 
-# Convert ARFF to CSV
+# Convert ARFF to CSV3
 with open('messidor_features.arff') as f:
     content = f.readlines()
 content = [x.strip() for x in content]
