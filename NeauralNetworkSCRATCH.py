@@ -1,125 +1,134 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 
-# Define activation function and its derivative
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+class NeuralNetwork:
+    def __init__(self, X, y, hidden_neurons=20, lr=0.1, epochs=4000000):
+        self.X = X
+        self.y = y
+        self.hidden_neurons = hidden_neurons
+        self.lr = lr
+        self.epochs = epochs
+        self.input_neurons = X.shape[1]
+        self.output_neurons = y.shape[1]
+        self.W1 = np.random.randn(self.input_neurons, self.hidden_neurons)
+        self.W2 = np.random.randn(self.hidden_neurons, self.output_neurons)
+        self.b1 = np.zeros((1, self.hidden_neurons))
+        self.b2 = np.zeros((1, self.output_neurons))
+
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
+
+    def softmax(self, x):
+        exp_x = np.exp(x)
+        return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+
+    def forward(self, X):
+        self.z1 = np.dot(X, self.W1) + self.b1
+        self.a1 = self.sigmoid(self.z1)
+        self.z2 = np.dot(self.a1, self.W2) + self.b2
+        self.a2 = self.softmax(self.z2)
+        return self.a2
+
+    def backward(self, X, y, y_pred):
+        m = y.shape[0]
+        dL_dz2 = y_pred - y
+        dL_dW2 = (1 / m) * np.dot(self.a1.T, dL_dz2)
+        dL_db2 = (1 / m) * np.sum(dL_dz2, axis=0, keepdims=True)
+        dL_da1 = np.dot(dL_dz2, self.W2.T)
+        dL_dz1 = dL_da1 * self.sigmoid_derivative(self.a1)
+        dL_dW1 = (1 / m) * np.dot(X.T, dL_dz1)
+        dL_db1 = (1 / m) * np.sum(dL_dz1, axis=0)
+
+        self.W1 -= self.lr * dL_dW1
+        self.b1 -= self.lr * dL_db1
+        self.W2 -= self.lr * dL_dW2
+        self.b2 -= self.lr * dL_db2
+
+    def train(self):
+        for i in range(self.epochs):
+            y_pred = self.forward(self.X)
+            self.backward(self.X, self.y, y_pred)
+            loss = np.mean(-self.y * np.log(y_pred))
+            if (i + 1) % 1 == 0:
+                print(f'Epoch: {i + 1}/{self.epochs} Loss: {loss:.4f}')
+
+    def predict(self, X):
+        y_pred = self.forward(X)
+        predictions = np.argmax(y_pred, axis=1)
+        return predictions
 
 
-def sigmoid_derivative(x):
-    return sigmoid(x) * (1 - sigmoid(x))
-
-
+# Convert ARFF to CSV
+file = pd.read_csv('messidor_features.arff', header=None, comment='@')
 headerList = ['Quality Assessment', 'Pre-Screening', 'MA Detection 1', 'MA Detection 2', 'MA Detection 3',
               'MA Detection 4', 'MA Detection 5', 'MA Detection 6', 'Exudates Detection 1',
               'Exudates Detection 2', 'Exudates Detection 3', 'Exudates Detection 4',
               'Exudates Detection 5', 'Exudates Detection 6', 'Exudates Detection 7', 'Exudates Detection 8',
               'Euclidean Distance', 'OPTIC Disc', 'AM/FM', 'Output']
+file.to_csv('updatedDF.csv', header=headerList, index=False)
 
-# Convert ARFF to CSV
-with open('messidor_features.arff') as f:
-    content = f.readlines()
-content = [x.strip() for x in content]
-start_data = content.index('@data') + 1
-data = [x.split(',') for x in content[start_data:]]
-df = pd.DataFrame(data, columns=headerList)
-df.to_csv('messidor_features.csv', index=False)
+# Read in the data from the csv & drop 1 column
+df = pd.read_csv('updatedDF.csv')
+y = df['Output']  # Create target variable
+df.drop(columns=['Output'], inplace=True)
 
-# Fill null values with the mean of each column
-for col in df.columns:
-    print("Number of zero values in column", col, ":", (df[col] == 0).sum())
+# Count the number of nulls in each column, excluding the first 2 and the last column
+for col in df.iloc[:, 2:-1].columns:
+    numberOfNulls = (df[col] == 0).sum()
+    print("Number of Null Values", col, ":", numberOfNulls)
 
-    # Load dataset, visualize and drop uninformative columns
-    df = pd.read_csv('messidor_features.csv')
-    X = df.iloc[:, :-1].values.astype(np.float32)
-    y = df.iloc[:, -1].values.astype(np.int32)
-    df.drop(columns=['Exudates Detection 7', 'Exudates Detection 8', 'Output'], inplace=True)
-    print(df)
+    # Drop columns that have more than 50% null values
+    if numberOfNulls > 1151 * 0.25:
+        df.drop(columns=[col], inplace=True)
+    elif numberOfNulls != 0:
+        # Calculate the average for the columns that have null values without using the 0 values
+        avg = df[df[col] != 0][col]  # Get non-zero values
+        avg_Val = avg.mean()  # Calculate the mean
+        print("Average ", col, " (excluding 0 values):", avg_Val)
 
-    # 3. Normalize the features
-    scaler = MinMaxScaler()
-    X_norm = scaler.fit_transform(X)
+        # Replace all values equal to zero in the column with its average value
+        df.loc[df[col] == 0, col] = avg_Val
 
-    # 4. Split dataset into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.2, random_state=42)
+# Normalize the features
+min_val = np.min(df)
+max_val = np.max(df)
+X_norm = (df - min_val) / (max_val - min_val)
+print(X_norm)
 
-    # 5. Build the neural network
-    input_shape = X_train.shape[1]
-    hidden_shape = 20
-    output_shape = len(np.unique(y_train))
+# Determine number of rows to select
+num_rows = int(len(X_norm) * 0.8)
 
-    # Initialize weights with small random values
-    w1 = np.random.randn(input_shape, hidden_shape) * 0.01
-    w2 = np.random.randn(hidden_shape, output_shape) * 0.01
+# Select randomly 80% of rows
+selected_data = X_norm.sample(n=num_rows, random_state=42)
 
-    # Set learning rate and number of iterations
-    learning_rate = 0.01
-    num_iterations = 1000
+# Drop selected rows from the original dataframe to obtain remaining 20%
+remaining_data = X_norm.drop(selected_data.index)
 
-    # Set early stopping parameters
-    patience = 10
-    best_loss = np.inf
-    best_w1 = None
-    best_w2 = None
-    no_improvement_count = 0
+print(selected_data)
+print(remaining_data)
 
-    # Train the model using backpropagation algorithm
-    train_loss = []
-    train_acc = []
-    for i in range(num_iterations):
-        # Forward propagation
-        z1 = X_train.dot(w1)
-        a1 = sigmoid(z1)
-        z2 = a1.dot(w2)
-        y_pred = sigmoid(z2)
-        print(y_pred)
+# Split data into training and test sets
+X_train = selected_data.values
+X_test = remaining_data.values
+y_train = y.loc[selected_data.index].values
+y_test = y.loc[remaining_data.index].values
 
-        # Calculate loss and accuracy
-        loss = -np.mean(y_train * np.log(y_pred) + (1 - y_train) * np.log(1 - y_pred))
-        acc = np.mean((y_pred > 0.5) == y_train)
-        train_loss.append(loss)
-        train_acc.append(acc)
+# One-hot encode target variable
+from sklearn.preprocessing import OneHotEncoder
 
-        # Backward propagation
-        dz2 = y_pred - y_train
-        dw2 = a1.T.dot(dz2)
-        dz1 = dz2.dot(w2.T) * sigmoid_derivative(z1)
-        dw1 = X_train.T.dot(dz1)
-        # Update weights
-        w1 -= learning_rate * dw1
-        w2 -= learning_rate * dw2
+encoder = OneHotEncoder(sparse=False)
+y_train = encoder.fit_transform(y_train.reshape(-1, 1))
+y_test = encoder.transform(y_test.reshape(-1, 1))
 
-        # Check early stopping condition
-        if loss < best_loss:
-            best_loss = loss
-            best_w1 = w1.copy()
-            best_w2 = w2.copy()
-            no_improvement_count = 0
-        else:
-            no_improvement_count += 1
-            if no_improvement_count >= patience:
-                print(f"Early stopping after {i + 1} iterations")
-                w1 = best_w1
-                w2 = best_w2
-                break
+# Train neural network
+nn = NeuralNetwork(X_train, y_train, hidden_neurons=20, lr=0.1, epochs=4000000)
+nn.train()
 
-        # Print progress
-        if (i + 1) % 100 == 0:
-            print(f"Iteration {i + 1}/{num_iterations}: loss={loss:.4f}, acc={acc:.4f}")
-
-        # Test the model on the testing set
-        z1 = X_test.dot(w1)
-        a1 = sigmoid(z1)
-        z2 = a1.dot(w2)
-        y_pred = sigmoid(z2)
-
-        # Convert y_pred to class labels
-        y_pred = np.argmax(y_pred, axis=1)
-
-        test_loss = -np.mean(y_test * np.log(y_pred) + (1 - y_test) * np.log(1 - y_pred))
-        test_acc = np.mean(y_pred == y_test)
-        print(f"Test loss: {test_loss:.4f}, Test accuracy: {test_acc:.4f}")
+# Make predictions
+predictions = nn.predict(X_train)
