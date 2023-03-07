@@ -1,11 +1,12 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import confusion_matrix, accuracy_score
 
 
 class NeuralNetwork:
-    def __init__(self, X, y, hidden_neurons=20, lr=0.1, epochs=4000000):
+    def __init__(self, X, y, hidden_neurons=30, lr=0.1, epochs=100000):
         self.X = X
         self.y = y
         self.hidden_neurons = hidden_neurons
@@ -51,17 +52,34 @@ class NeuralNetwork:
         self.b2 -= self.lr * dL_db2
 
     def train(self):
+        # Initialize variables to keep track of MSE and number of epochs
+        mse = []
+        num_epochs = 0
         for i in range(self.epochs):
+            # Calculate the MSE for this epoch
             y_pred = self.forward(self.X)
+            epoch_mse = ((self.y - y_pred) ** 2).mean()
+            mse.append(epoch_mse)
+            # Increment the number of epochs
+            num_epochs += 1
             self.backward(self.X, self.y, y_pred)
+
             loss = np.mean(-self.y * np.log(y_pred))
             if (i + 1) % 1 == 0:
                 print(f'Epoch: {i + 1}/{self.epochs} Loss: {loss:.4f}')
 
+        # Plot the training curve
+        plt.plot(range(num_epochs), mse)
+        plt.xlabel('Epoch')
+        plt.ylabel('MSE')
+        plt.show()
+
     def predict(self, X):
         y_pred = self.forward(X)
-        predictions = np.argmax(y_pred, axis=1)
-        return predictions
+        if y_pred.ndim == 1:
+            return np.argmax(y_pred)
+        else:
+            return np.argmax(y_pred, axis=1)
 
 
 # Convert ARFF to CSV
@@ -120,15 +138,36 @@ y_train = y.loc[selected_data.index].values
 y_test = y.loc[remaining_data.index].values
 
 # One-hot encode target variable
-from sklearn.preprocessing import OneHotEncoder
-
 encoder = OneHotEncoder(sparse=False)
 y_train = encoder.fit_transform(y_train.reshape(-1, 1))
 y_test = encoder.transform(y_test.reshape(-1, 1))
 
 # Train neural network
-nn = NeuralNetwork(X_train, y_train, hidden_neurons=20, lr=0.1, epochs=4000000)
+nn = NeuralNetwork(X_train, y_train, hidden_neurons=30, lr=0.1, epochs=100000)
 nn.train()
 
 # Make predictions
-predictions = nn.predict(X_train)
+y_pred = nn.predict(X_test)
+
+# Print the shape of y_pred and y_test
+print("Shape of y_pred:", y_pred.shape)
+print("Shape of y_test:", y_test.shape)
+
+# Convert one-hot encoded predictions and true labels back to class labels
+# y_pred = np.argmax(y_pred, axis=1)
+y_test = np.argmax(y_test, axis=1)
+
+# Construct the confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+tn, fp, fn, tp = cm.ravel()
+
+# Calculate performance indices
+fp_rate = fp / (fp + tn)
+tp_rate = tp / (tp + fn)
+accuracy = accuracy_score(y_test, y_pred)
+
+# Print results
+print('Confusion matrix:', cm)
+print('FP rate:', fp_rate)
+print('TP rate:', tp_rate)
+print('Accuracy:', accuracy)
