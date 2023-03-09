@@ -33,7 +33,7 @@ class NeuralNetwork:
         self.z1 = np.dot(X, self.W1) + self.b1
         self.a1 = self.sigmoid(self.z1)
         self.z2 = np.dot(self.a1, self.W2) + self.b2
-        self.a2 = self.softmax(self.z2)
+        self.a2 = self.sigmoid(self.z2)
         return self.a2
 
     def backward(self, X, y, y_pred):
@@ -143,7 +143,7 @@ y_train = encoder.fit_transform(y_train.reshape(-1, 1))
 y_test = encoder.transform(y_test.reshape(-1, 1))
 
 # Train neural network
-nn = NeuralNetwork(X_train, y_train, hidden_neurons=30, lr=0.1, epochs=100000)
+nn = NeuralNetwork(X_train, y_train)
 nn.train()
 
 # Make predictions

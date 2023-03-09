@@ -119,7 +119,7 @@ model = tf.keras.Sequential([
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
 # Train the model
-history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.1)
+history = model.fit(X_train, y_train, epochs=100000, batch_size=42, validation_split=0.1)
 
 # Evaluate the model
 test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
