@@ -167,7 +167,19 @@ tp_rate = tp / (tp + fn)
 accuracy = accuracy_score(y_test, y_pred)
 
 # Print results
-print('Confusion matrix:', cm)
-print('FP rate:', fp_rate)
-print('TP rate:', tp_rate)
-print('Accuracy:', accuracy)
+from tabulate import tabulate
+
+headers = ['Metrics', 'Values']
+# Define table rows
+rows = [
+    ['Confusion matrix', cm],
+    ['FP rate', fp_rate],
+    ['TP rate', tp_rate],
+    ['Accuracy', accuracy]
+]
+# Print table
+print(tabulate(rows, headers=headers, tablefmt='grid'))
+# print('Confusion matrix:', cm)
+# print('FP rate:', fp_rate)
+# print('TP rate:', tp_rate)
+# print('Accuracy:', accuracy)
