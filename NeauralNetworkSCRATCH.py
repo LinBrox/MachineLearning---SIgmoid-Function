@@ -179,7 +179,7 @@ rows = [
 ]
 # Print table
 print(tabulate(rows, headers=headers, tablefmt='grid'))
-# print('Confusion matrix:', cm)
-# print('FP rate:', fp_rate)
-# print('TP rate:', tp_rate)
-# print('Accuracy:', accuracy)
+print('Confusion matrix:', cm)
+print('FP rate:', fp_rate)
+print('TP rate:', tp_rate)
+print('Accuracy:', accuracy)
