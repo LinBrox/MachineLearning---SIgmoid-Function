@@ -5,10 +5,11 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 
 class NeuralNetwork:
-    def __init__(self, X, y, hidden_neurons=20, lr=0.1, epochs=10000):
+    def __init__(self, X, y, hidden_neurons=30, lr=0.1, epochs=10000):
         self.X = X
         self.y = y
         self.hidden_neurons = hidden_neurons
@@ -151,10 +152,6 @@ nn.train()
 # Make predictions
 y_pred = nn.predict(X_test)
 
-# Print the shape of y_pred and y_test
-print("Shape of y_pred:", y_pred.shape)
-print("Shape of y_test:", y_test.shape)
-
 # Convert one-hot encoded predictions and true labels back to class labels
 # y_pred = np.argmax(y_pred, axis=1)
 y_test = np.argmax(y_test, axis=1)
@@ -193,3 +190,11 @@ plt.title('ROC Curve')
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.show()
+
+precision = precision_score(y_test, y_pred, average='weighted')
+recall = recall_score(y_test, y_pred, average='weighted')
+f1 = f1_score(y_test, y_pred, average='weighted')
+
+print('Precision:', precision)
+print('Recall:', recall)
+print('F1 score:', f1)

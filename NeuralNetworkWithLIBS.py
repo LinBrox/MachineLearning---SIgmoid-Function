@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
+from tabulate import tabulate
 
 # Read in the data from the arff file and convert it to a pandas dataframe
 file = pd.read_csv('messidor_features.arff', header=None, comment='@')
@@ -48,7 +49,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
 # Define the neural network model
 model = tf.keras.Sequential([
-    tf.keras.layers.Dense(20, activation='relu', input_shape=(X_train.shape[1],)),
+    tf.keras.layers.Dense(30, activation='relu', input_shape=(X_train.shape[1],)),
     tf.keras.layers.Dense(1, activation='sigmoid')
 ])
 
@@ -58,7 +59,7 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 # Train the model
-history = model.fit(X_train, y_train, epochs=10000, batch_size=100, validation_split=0.2, verbose=1)
+history = model.fit(X_train, y_train, epochs=10000, batch_size=32, validation_split=0.2, verbose=1)
 
 # Evaluate the model on the test set
 test_loss, test_acc = model.evaluate(X_test, y_test, verbose=1)
@@ -68,11 +69,22 @@ print('Test accuracy:', test_acc)
 y_pred = model.predict(X_test)
 y_pred_binary = (y_pred > 0.5).astype(int)
 
-# Calculate the confusion matrix and accuracy score
+# Calculate the confusion matrix, accuracy score, precision, recall, and F1 score
 cm = confusion_matrix(y_test, y_pred_binary)
+accuracy = accuracy_score(y_test, y_pred_binary)
+precision = cm[1, 1] / (cm[0, 1] + cm[1, 1])
+recall = cm[1, 1] / (cm[1, 0] + cm[1, 1])
+f1 = 2 * (precision * recall) / (precision + recall)
+
+# Print the results
 print('Confusion matrix:')
-print(cm)
-print('Accuracy score:', accuracy_score(y_test, y_pred_binary))
+print(
+    tabulate(cm, headers=['Predicted Negative', 'Predicted Positive'], showindex=['Actual Negative', 'Actual Positive'],
+             tablefmt='fancy_grid'))
+print('Accuracy score:', accuracy)
+print('Precision:', precision)
+print('Recall:', recall)
+print('F1 score:', f1)
 
 # Plot the training and validation MSE vs epochs
 plt.plot(history.history['loss'])
