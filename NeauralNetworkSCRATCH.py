@@ -3,10 +3,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
 
 
 class NeuralNetwork:
-    def __init__(self, X, y, hidden_neurons=30, lr=0.1, epochs=100000):
+    def __init__(self, X, y, hidden_neurons=20, lr=0.1, epochs=10000):
         self.X = X
         self.y = y
         self.hidden_neurons = hidden_neurons
@@ -179,7 +181,15 @@ rows = [
 ]
 # Print table
 print(tabulate(rows, headers=headers, tablefmt='grid'))
-print('Confusion matrix:', cm)
-print('FP rate:', fp_rate)
-print('TP rate:', tp_rate)
-print('Accuracy:', accuracy)
+
+# Calculate AUC score
+test_auc = roc_auc_score(y_test, y_pred)
+print('Test AUC:', test_auc)
+
+# Plot ROC curve
+fpr, tpr, _ = roc_curve(y_test, y_pred)
+plt.plot(fpr, tpr)
+plt.title('ROC Curve')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.show()
