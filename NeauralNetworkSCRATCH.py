@@ -1,15 +1,12 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.metrics import confusion_matrix, accuracy_score
-from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
-from sklearn.metrics import precision_score, recall_score, f1_score
+from tabulate import tabulate
 
 
 class NeuralNetwork:
-    def __init__(self, X, y, hidden_neurons=30, lr=0.1, epochs=10000):
+    def __init__(self, X, y, hidden_neurons=12, lr=0.1, epochs=10000):
         self.X = X
         self.y = y
         self.hidden_neurons = hidden_neurons
@@ -84,6 +81,12 @@ class NeuralNetwork:
         else:
             return np.argmax(y_pred, axis=1)
 
+    def predict_proba(self, X):
+        z1 = np.dot(X, self.W1) + self.b1
+        a1 = self.sigmoid(z1)
+        z2 = np.dot(a1, self.W2) + self.b2
+        return self.softmax(z2)
+
 
 # Convert ARFF to CSV
 file = pd.read_csv('messidor_features.arff', header=None, comment='@')
@@ -140,35 +143,52 @@ X_test = remaining_data.values
 y_train = y.loc[selected_data.index].values
 y_test = y.loc[remaining_data.index].values
 
+
 # One-hot encode target variable
-encoder = OneHotEncoder(sparse=False)
-y_train = encoder.fit_transform(y_train.reshape(-1, 1))
-y_test = encoder.transform(y_test.reshape(-1, 1))
+def one_hot_encode(y):
+    unique_values = list(set(y))
+    one_hot_encoded = []
+    for value in y:
+        one_hot_encoded.append([1 if value == unique_value else 0 for unique_value in unique_values])
+    return np.array(one_hot_encoded)
+
+
+y_train = one_hot_encode(y_train)
+y_test = one_hot_encode(y_test)
 
 # Train neural network
 nn = NeuralNetwork(X_train, y_train)
 nn.train()
 
 # Make predictions
-y_pred = nn.predict(X_test)
+y_pred_proba = nn.predict_proba(X_test)[:, 1]
 
 # Convert one-hot encoded predictions and true labels back to class labels
 # y_pred = np.argmax(y_pred, axis=1)
 y_test = np.argmax(y_test, axis=1)
 
 # Construct the confusion matrix
-cm = confusion_matrix(y_test, y_pred)
+y_pred = (y_pred_proba > 0.5).astype(int)  # Convert predicted probabilities to class predictions
+cm = np.zeros((2, 2), dtype=int)
+for i in range(len(y_test)):
+    if y_test[i] == 0 and y_pred[i] == 0:
+        cm[0][0] += 1
+    elif y_test[i] == 0 and y_pred[i] == 1:
+        cm[0][1] += 1
+    elif y_test[i] == 1 and y_pred[i] == 0:
+        cm[1][0] += 1
+    elif y_test[i] == 1 and y_pred[i] == 1:
+        cm[1][1] += 1
 tn, fp, fn, tp = cm.ravel()
 
 # Calculate performance indices
 fp_rate = fp / (fp + tn)
 tp_rate = tp / (tp + fn)
-accuracy = accuracy_score(y_test, y_pred)
+accuracy = (tp + tn) / (tp + tn + fp + fn)
 
 # Print results
-from tabulate import tabulate
-
 headers = ['Metrics', 'Values']
+
 # Define table rows
 rows = [
     ['Confusion matrix', cm],
@@ -179,22 +199,50 @@ rows = [
 # Print table
 print(tabulate(rows, headers=headers, tablefmt='grid'))
 
+
 # Calculate AUC score
-test_auc = roc_auc_score(y_test, y_pred)
+def auc_score(y_true, y_pred_proba):
+    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+    return np.trapz(tpr, fpr)
+
+
+test_auc = auc_score(y_test, y_pred_proba)
 print('Test AUC:', test_auc)
 
+
 # Plot ROC curve
-fpr, tpr, _ = roc_curve(y_test, y_pred)
-plt.plot(fpr, tpr)
-plt.title('ROC Curve')
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.show()
+def plot_roc_curve(y_true, y_pred_proba):
+    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+    plt.plot(fpr, tpr)
+    plt.title('ROC Curve')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.show()
 
-precision = precision_score(y_test, y_pred, average='weighted')
-recall = recall_score(y_test, y_pred, average='weighted')
-f1 = f1_score(y_test, y_pred, average='weighted')
 
+plot_roc_curve(y_test, y_pred_proba)
+
+
+# Calculate precision, recall, and F1 score
+def precision_recall_f1_score(y_true, y_pred):
+    cm = np.zeros((2, 2), dtype=int)
+    for i in range(len(y_test)):
+        if y_test[i] == 0 and y_pred[i] == 0:
+            cm[0][0] += 1
+        elif y_test[i] == 0 and y_pred[i] == 1:
+            cm[0][1] += 1
+        elif y_test[i] == 1 and y_pred[i] == 0:
+            cm[1][0] += 1
+        elif y_test[i] == 1 and y_pred[i] == 1:
+            cm[1][1] += 1
+    tp, fp, fn, tn = cm.ravel()
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1 = 2 * (precision * recall) / (precision + recall)
+    return precision, recall, f1
+
+
+precision, recall, f1 = precision_recall_f1_score(y_test, y_pred)
 print('Precision:', precision)
 print('Recall:', recall)
 print('F1 score:', f1)
